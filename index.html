@@ -456,9 +456,61 @@
         let selectedDeliveryTime = 'Subito'; // Default value
         let selectedLocation = 'Dove Sono io'; // Default value
         let orders = JSON.parse(localStorage.getItem('cocktailOrders') || '[]');
-        const ADMIN_PHONE = '3515292930'; // Numero barista hardcoded - sempre questo numero da qualsiasi dispositivo
+        const ADMIN_PHONE = '3515292930';
 
-        // Save orders to localStorage
+        // =============================================
+        // GOOGLE SHEETS CONFIG
+        // Inserisci qui l'URL del tuo Apps Script distribuito
+        // =============================================
+        const SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbzkXSFxNp3fpVKgrAKRaJMP-g7TtASAXx9EoFDcV66ps8fsLxnBGkSgVSkCQl_iwqNq/exec';
+
+        function isApiConfigured() {
+            return SHEETS_API_URL && !SHEETS_API_URL.includes('INCOLLA_QUI');
+        }
+
+        // Load orders from Google Sheets
+        async function loadOrdersFromCloud() {
+            if (!isApiConfigured()) return;
+            try {
+                const response = await fetch(SHEETS_API_URL + '?action=read');
+                const data = await response.json();
+                if (data.success && data.orders) {
+                    orders = data.orders.reverse(); // più recenti prima
+                    localStorage.setItem('cocktailOrders', JSON.stringify(orders));
+                    renderOrders();
+                }
+            } catch (error) {
+                console.log('Cloud non disponibile, uso dati locali:', error);
+            }
+        }
+
+        // Save single order to Google Sheets
+        async function saveOrderToCloud(order) {
+            if (!isApiConfigured()) return;
+            try {
+                await fetch(SHEETS_API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'add', order: order })
+                });
+            } catch (error) {
+                console.log('Errore salvataggio cloud:', error);
+            }
+        }
+
+        // Clear orders on Google Sheets
+        async function clearOrdersOnCloud() {
+            if (!isApiConfigured()) return;
+            try {
+                await fetch(SHEETS_API_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'clear' })
+                });
+            } catch (error) {
+                console.log('Errore pulizia cloud:', error);
+            }
+        }
+
+        // Save orders to localStorage (cache locale)
         function saveOrders() {
             localStorage.setItem('cocktailOrders', JSON.stringify(orders));
         }
@@ -501,6 +553,7 @@
             // Reset orders
             orders = [];
             saveOrders();
+            clearOrdersOnCloud();
             renderOrders();
 
             // Show success
@@ -816,6 +869,7 @@
             // Save order persistently
             orders.unshift(order);
             saveOrders();
+            saveOrderToCloud(order);
 
             // Send WhatsApp message
             sendWhatsAppMessage(order, ADMIN_PHONE);
@@ -894,6 +948,7 @@
         // Initialize
         renderCocktails();
         renderOrders();
+        loadOrdersFromCloud(); // Carica dati dal cloud (aggiorna appena pronto)
 
         // Close modal on outside click
         document.getElementById('orderModal').addEventListener('click', function(e) {
