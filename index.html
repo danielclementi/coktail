@@ -314,6 +314,10 @@
     <div class="container">
         <h1>🍹 COCKTAIL DANIEL SRL</h1>
         <div class="copyright">© 2026 COCKTAIL DANIEL SRL - Tutti i diritti riservati</div>
+        <div id="userGreeting" style="display: none; text-align: center; margin-bottom: 15px;">
+            <span style="color: white; font-size: 1em; text-shadow: 1px 1px 4px rgba(0,0,0,0.6);">👤 <strong id="greetingName"></strong></span>
+            <button onclick="changeUserName()" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; padding: 3px 8px; font-size: 0.7em; cursor: pointer; margin-left: 6px;">✏️</button>
+        </div>
 
         <div id="successMessage" class="success-message">
             ✓ Ordine inviato con successo!
@@ -334,6 +338,20 @@
                 <div id="totalCount" style="font-size: 0.8em; color: rgba(255,255,255,0.75); margin-top: 2px;"></div>
                 <button onclick="payAndClose()" style="margin-top: 12px; background: white; color: #667eea; border: none; border-radius: 8px; padding: 12px 24px; font-size: 15px; font-weight: bold; cursor: pointer; transition: opacity 0.3s; box-shadow: 0 2px 8px rgba(0,0,0,0.2);" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">✅ Paga e chiudi conto</button>
             </div>
+        </div>
+    </div>
+
+    <!-- Welcome Modal (solo prima volta) -->
+    <div class="modal" id="welcomeModal">
+        <div class="modal-content" style="text-align: center;">
+            <div style="font-size: 3em; margin-bottom: 10px;">🍹</div>
+            <h2 style="margin-bottom: 5px;">Benvenuto!</h2>
+            <p style="color: #666; margin-bottom: 25px; font-size: 0.95em;">Come ti chiami? Serve per identificare i tuoi ordini.<br>Te lo chiederemo <strong>solo questa volta</strong>.</p>
+            <div class="form-group" style="text-align: left;">
+                <label>👤 Il tuo nome:</label>
+                <input type="text" id="regName" placeholder="es: Marco">
+            </div>
+            <button class="btn btn-primary" style="width: 100%; padding: 14px;" onclick="saveRegistration()">Inizia a ordinare 🍹</button>
         </div>
     </div>
 
@@ -456,13 +474,53 @@
         let selectedDeliveryTime = 'Subito'; // Default value
         let selectedLocation = 'Dove Sono io'; // Default value
         let orders = JSON.parse(localStorage.getItem('cocktailOrders') || '[]');
+        let customerName = localStorage.getItem('customerName') || '';
         const ADMIN_PHONE = '3515292930';
+
+        // Check if user is registered
+        function checkRegistration() {
+            if (!customerName) {
+                document.getElementById('welcomeModal').classList.add('active');
+            } else {
+                showGreeting();
+            }
+        }
+
+        // Save first-time registration
+        function saveRegistration() {
+            const name = document.getElementById('regName').value.trim();
+            if (!name) {
+                alert('Inserisci il tuo nome per continuare.');
+                document.getElementById('regName').focus();
+                return;
+            }
+            customerName = name;
+            localStorage.setItem('customerName', customerName);
+            document.getElementById('welcomeModal').classList.remove('active');
+            showGreeting();
+        }
+
+        // Change name (pencil button)
+        function changeUserName() {
+            const newName = prompt('Modifica il tuo nome:', customerName);
+            if (newName && newName.trim()) {
+                customerName = newName.trim();
+                localStorage.setItem('customerName', customerName);
+                showGreeting();
+            }
+        }
+
+        // Show greeting bar
+        function showGreeting() {
+            document.getElementById('greetingName').textContent = customerName;
+            document.getElementById('userGreeting').style.display = 'block';
+        }
 
         // =============================================
         // GOOGLE SHEETS CONFIG
         // Inserisci qui l'URL del tuo Apps Script distribuito
         // =============================================
-        const SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbzkXSFxNp3fpVKgrAKRaJMP-g7TtASAXx9EoFDcV66ps8fsLxnBGkSgVSkCQl_iwqNq/exec';
+        const SHEETS_API_URL = 'INCOLLA_QUI_IL_TUO_URL_APPS_SCRIPT';
 
         function isApiConfigured() {
             return SHEETS_API_URL && !SHEETS_API_URL.includes('INCOLLA_QUI');
@@ -538,6 +596,7 @@
 
             // Build WhatsApp receipt message
             let message = `💳 *PAGAMENTO EFFETTUATO*\n\n`;
+            message += `👤 *Cliente:* ${customerName}\n\n`;
             message += `📋 *Riepilogo ordini:*\n`;
             orders.forEach((order, i) => {
                 message += `${i + 1}. ${order.cocktail} (${order.variant}) - ${order.price}\n`;
@@ -855,6 +914,7 @@
 
             const order = {
                 id: Date.now(),
+                customerName: customerName,
                 cocktail: selectedCocktail,
                 variant: selectedVariant,
                 location: selectedLocation,
@@ -890,6 +950,7 @@
         // Send WhatsApp message
         function sendWhatsAppMessage(order, phone) {
             let message = `🍹 *NUOVO ORDINE COCKTAIL*\n\n`;
+            message += `👤 *Cliente:* ${order.customerName}\n`;
             message += `📋 *Cocktail:* ${order.cocktail} - ${order.variant}\n`;
             message += `📍 *Posizione:* ${order.location}\n`;
             
@@ -948,7 +1009,8 @@
         // Initialize
         renderCocktails();
         renderOrders();
-        loadOrdersFromCloud(); // Carica dati dal cloud (aggiorna appena pronto)
+        loadOrdersFromCloud();
+        checkRegistration();
 
         // Close modal on outside click
         document.getElementById('orderModal').addEventListener('click', function(e) {

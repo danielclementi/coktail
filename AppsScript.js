@@ -44,14 +44,15 @@ function readOrders() {
     if (data[i][0] === '' || data[i][0] === null) continue;
     orders.push({
       id: data[i][0],
-      cocktail: data[i][1],
-      variant: data[i][2],
-      location: data[i][3],
-      time: data[i][4],
-      orderTime: data[i][5],
-      orderDate: data[i][6],
-      notes: data[i][7],
-      price: data[i][8]
+      customerName: data[i][1],
+      cocktail: data[i][2],
+      variant: data[i][3],
+      location: data[i][4],
+      time: data[i][5],
+      orderTime: data[i][6],
+      orderDate: data[i][7],
+      notes: data[i][8],
+      price: data[i][9]
     });
   }
 
@@ -64,6 +65,7 @@ function addOrder(order) {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   sheet.appendRow([
     order.id,
+    order.customerName,
     order.cocktail,
     order.variant,
     order.location,
