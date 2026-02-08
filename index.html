@@ -324,8 +324,16 @@
 
         <!-- Orders Section -->
         <div class="orders-section">
-            <h2>📋 Ordini Recenti</h2>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h2 style="margin-bottom: 0;">📋 Storico Ordini</h2>
+                <button onclick="clearOrders()" style="background: #e74c3c; color: white; border: none; border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: bold; cursor: pointer; opacity: 0.85; transition: opacity 0.3s;" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.85'">🗑️ Svuota</button>
+            </div>
             <div id="ordersList"></div>
+            <div id="totalSpent" style="display: none; margin-top: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; padding: 15px; text-align: center;">
+                <div style="font-size: 0.85em; color: rgba(255,255,255,0.85); margin-bottom: 4px;">💰 Totale speso</div>
+                <div id="totalAmount" style="font-size: 1.8em; font-weight: bold; color: white;">0,00€</div>
+                <div id="totalCount" style="font-size: 0.8em; color: rgba(255,255,255,0.75); margin-top: 2px;"></div>
+            </div>
         </div>
     </div>
 
@@ -447,8 +455,22 @@
         let selectedVariant = null;
         let selectedDeliveryTime = 'Subito'; // Default value
         let selectedLocation = 'Dove Sono io'; // Default value
-        let orders = [];
+        let orders = JSON.parse(localStorage.getItem('cocktailOrders') || '[]');
         const ADMIN_PHONE = '3515292930'; // Numero barista hardcoded - sempre questo numero da qualsiasi dispositivo
+
+        // Save orders to localStorage
+        function saveOrders() {
+            localStorage.setItem('cocktailOrders', JSON.stringify(orders));
+        }
+
+        // Clear all orders
+        function clearOrders() {
+            if (confirm('Sei sicuro di voler cancellare tutto lo storico ordini?')) {
+                orders = [];
+                saveOrders();
+                renderOrders();
+            }
+        }
 
         // Render cocktails
         function renderCocktails() {
@@ -751,8 +773,9 @@
                 gps: gpsCoordinates
             };
 
-            // Save order (only in session, not persistent)
+            // Save order persistently
             orders.unshift(order);
+            saveOrders();
 
             // Send WhatsApp message
             sendWhatsAppMessage(order, ADMIN_PHONE);
@@ -799,14 +822,26 @@
         // Render orders
         function renderOrders() {
             const ordersList = document.getElementById('ordersList');
+            const totalSpentEl = document.getElementById('totalSpent');
             
             if (orders.length === 0) {
                 ordersList.innerHTML = '<div class="no-orders">Nessun ordine ancora 🍹</div>';
+                totalSpentEl.style.display = 'none';
                 return;
             }
 
-            // Mostra solo gli ordini della sessione corrente
-            ordersList.innerHTML = orders.slice(0, 10).map(order => `
+            // Calculate total spent
+            const total = orders.reduce((sum, order) => {
+                const priceNum = parseFloat(order.price.replace(',', '.').replace('€', ''));
+                return sum + (isNaN(priceNum) ? 0 : priceNum);
+            }, 0);
+            
+            document.getElementById('totalAmount').textContent = total.toFixed(2).replace('.', ',') + '€';
+            document.getElementById('totalCount').textContent = orders.length + (orders.length === 1 ? ' ordine' : ' ordini');
+            totalSpentEl.style.display = 'block';
+
+            // Mostra gli ordini salvati (ultimi 50)
+            ordersList.innerHTML = orders.slice(0, 50).map(order => `
                 <div class="order-item">
                     <strong>${order.cocktail}</strong> - <em>${order.variant}</em> - <strong style="color: #667eea;">${order.price}</strong><br>
                     📍 ${order.location} | ⏰ ${order.time}<br>
